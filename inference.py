@@ -454,14 +454,10 @@ class JointParticleFilter(ParticleFilter):
         should be evenly distributed across positions in order to ensure a
         uniform prior.
         """
+        self.particles = []
         "*** YOUR CODE HERE ***"
         possibleCombinations = list(itertools.product(self.legalPositions, repeat=self.numGhosts))
-        
-        # Shuffle the combinations to ensure randomness
         random.shuffle(possibleCombinations)
-        
-        # Evenly distribute the particles across the combinations
-        self.particles = []
         numParticles = self.numParticles
         for i in range(numParticles):
             self.particles.append(possibleCombinations[i % len(possibleCombinations)])
@@ -497,7 +493,25 @@ class JointParticleFilter(ParticleFilter):
         the DiscreteDistribution may be useful.
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        pacmanPosition = gameState.getPacmanPosition()
+        weights = DiscreteDistribution()
+
+        for particle in self.particles:
+            weight = 1.0
+            for i in range(self.numGhosts):
+                ghostPosition = particle[i]
+                noisyDistance = observation[i]
+                jailPosition = self.getJailPosition(i)
+                weight *= self.getObservationProb(noisyDistance, pacmanPosition, ghostPosition, jailPosition)
+
+            weights[particle] += weight
+        if weights.total() == 0:
+            self.initializeUniformly(gameState)
+        else:
+            newParticles = []
+            for _ in range(self.numParticles):
+                newParticles.append(weights.sample())
+            self.particles = newParticles
 
     def elapseTime(self, gameState):
         """
@@ -510,7 +524,9 @@ class JointParticleFilter(ParticleFilter):
 
             # now loop through and update each entry in newParticle...
             "*** YOUR CODE HERE ***"
-            raiseNotDefined()
+            for i in range(self.numGhosts):
+                newPositionDistance = self.getPositionDistribution(gameState, newParticle, i, self.ghostAgents[i])
+                newParticle[i] = newPositionDistance.sample()
 
             """*** END YOUR CODE HERE ***"""
             newParticles.append(tuple(newParticle))
